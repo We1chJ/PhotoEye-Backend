@@ -164,6 +164,6 @@ if __name__ == "__main__":
     # Load models at startup
     if load_models():
         print("Starting Flask API server...")
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        # app.run(debug=True, host='0.0.0.0', port=5000)
     else:
         print("Failed to load models. Exiting...")
