@@ -84,27 +84,27 @@ def load_models():
     print()
     
     # Load aesthetic scoring model
-    # print("🧠 Loading aesthetic scoring model...")
+    print("🧠 Loading aesthetic scoring model...")
     
-    # try:
-    #     model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
+    try:
+        model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
         
-    #     print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
-    #     s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-    #     model.load_state_dict(s)
-    #     model.to(device)
-    #     model.eval()
+        print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
+        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        model.load_state_dict(s)
+        model.to(device)
+        model.eval()
         
-    #     print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
+        print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
         
-    # except FileNotFoundError:
-    #     print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    #     raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    # except Exception as e:
-    #     print(f"❌ ERROR loading aesthetic model: {e}")
-    #     raise Exception(f"Error loading aesthetic model: {e}")
+    except FileNotFoundError:
+        print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+        raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    except Exception as e:
+        print(f"❌ ERROR loading aesthetic model: {e}")
+        raise Exception(f"Error loading aesthetic model: {e}")
     
-    # print()
+    print()
     
     # # Load CLIP model
     # print("🎨 Loading CLIP model...")
