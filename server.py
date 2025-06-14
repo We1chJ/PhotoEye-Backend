@@ -7,7 +7,6 @@ from PIL import Image
 import numpy as np
 import io
 import base64
-import time
 
 app = Flask(__name__)
 
@@ -71,9 +70,7 @@ def load_models():
     print("=" * 60)
     print("INITIALIZING AESTHETIC SCORING API")
     print("=" * 60)
-    
-    start_time = time.time()
-    
+
     # Initialize device
     print("🔍 Detecting compute device...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -87,60 +84,39 @@ def load_models():
     print()
     
     # Load aesthetic scoring model
-    print("🧠 Loading aesthetic scoring model...")
-    model_start = time.time()
+    # print("🧠 Loading aesthetic scoring model...")
     
-    try:
-        model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
+    # try:
+    #     model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
         
-        print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
-        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-        model.load_state_dict(s)
-        model.to(device)
-        model.eval()
+    #     print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
+    #     s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+    #     model.load_state_dict(s)
+    #     model.to(device)
+    #     model.eval()
         
-        model_time = time.time() - model_start
-        print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
+    #     print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
         
-    except FileNotFoundError:
-        print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-        raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    except Exception as e:
-        print(f"❌ ERROR loading aesthetic model: {e}")
-        raise Exception(f"Error loading aesthetic model: {e}")
+    # except FileNotFoundError:
+    #     print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    #     raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    # except Exception as e:
+    #     print(f"❌ ERROR loading aesthetic model: {e}")
+    #     raise Exception(f"Error loading aesthetic model: {e}")
     
-    print()
+    # print()
     
-    # Load CLIP model
-    print("🎨 Loading CLIP model...")
-    clip_start = time.time()
+    # # Load CLIP model
+    # print("🎨 Loading CLIP model...")
     
-    try:
-        print("📥 Downloading/loading CLIP ViT-L/14 model...")
-        clip_model, preprocess = clip.load("ViT-L/14", device=device)
+    # try:
+    #     print("📥 Downloading/loading CLIP ViT-L/14 model...")
+    #     clip_model, preprocess = clip.load("ViT-L/14", device=device)
+                
+    # except Exception as e:
+    #     print(f"❌ ERROR loading CLIP model: {e}")
+    #     raise Exception(f"Error loading CLIP model: {e}")
         
-        clip_time = time.time() - clip_start
-        print(f"✅ CLIP model loaded successfully ({clip_time:.2f}s)")
-        
-    except Exception as e:
-        print(f"❌ ERROR loading CLIP model: {e}")
-        raise Exception(f"Error loading CLIP model: {e}")
-    
-    print()
-    
-    # Final summary
-    total_time = time.time() - start_time
-    print("=" * 60)
-    print("📊 MODEL LOADING SUMMARY")
-    print("=" * 60)
-    print(f"🧠 Aesthetic model load time: {model_time:.2f}s")
-    print(f"🎨 CLIP model load time: {clip_time:.2f}s")
-    print(f"⏱️  Total loading time: {total_time:.2f}s")
-    print(f"💾 Memory device: {device}")
-    print("✅ All models loaded and ready!")
-    print("=" * 60)
-    print()
-    
     return True
 
 def predict_aesthetic_score(pil_image):
@@ -209,15 +185,10 @@ def predict():
 if __name__ == "__main__":
     try:
         # Load models first before starting the server
-        # load_models()
+        load_models()
         
-        # # Start the Flask server
-        # print("🚀 Starting Flask API server...")
-        # print(f"📡 Server will be available at: http://0.0.0.0:8080")
-        # print(f"🔗 Health check endpoint: http://0.0.0.0:8080/health")
-        # print(f"🎯 Prediction endpoint: http://0.0.0.0:8080/predict")
-        # print("=" * 60)
-        
+        # Start the Flask server
+        print("🚀 Starting Flask API server...")        
         app.run(host='0.0.0.0', port=8080)
         
     except Exception as e:
