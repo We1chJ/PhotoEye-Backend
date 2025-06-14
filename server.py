@@ -95,7 +95,7 @@ def load_models():
         model.to(device)
         model.eval()
         
-        print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
+        print(f"✅ Aesthetic scoring model loaded successfully")
         
     except FileNotFoundError:
         print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
