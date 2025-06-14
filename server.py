@@ -7,7 +7,7 @@ from PIL import Image
 import numpy as np
 import io
 import base64
-import threading
+import time
 
 app = Flask(__name__)
 
@@ -20,9 +20,6 @@ model = None
 clip_model = None
 preprocess = None
 device = None
-models_loaded = False
-models_loading = False
-model_load_error = None
 
 class MLP(pl.LightningModule):
     def __init__(self, input_size, xcol='emb', ycol='avg_rating'):
@@ -69,55 +66,82 @@ def normalized(a, axis=-1, order=2):
 
 def load_models():
     """Load and initialize the models"""
-    global model, clip_model, preprocess, device, models_loaded, models_loading, model_load_error
+    global model, clip_model, preprocess, device
     
-    if models_loaded or models_loading:
-        return models_loaded
+    print("=" * 60)
+    print("INITIALIZING AESTHETIC SCORING API")
+    print("=" * 60)
     
-    models_loading = True
-    model_load_error = None
+    start_time = time.time()
+    
+    # Initialize device
+    print("🔍 Detecting compute device...")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda":
+        gpu_name = torch.cuda.get_device_name(0)
+        print(f"✅ GPU detected: {gpu_name}")
+        print(f"🔥 Using CUDA acceleration")
+    else:
+        print("⚠️  No GPU detected, using CPU")
+    print(f"📱 Device: {device}")
+    print()
+    
+    # Load aesthetic scoring model
+    print("🧠 Loading aesthetic scoring model...")
+    model_start = time.time()
     
     try:
-        print("Loading models...")
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {device}")
-        
-        # Load aesthetic scoring model
         model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
         
-        try:
-            s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-            model.load_state_dict(s)
-            model.to(device)
-            model.eval()
-            print("Aesthetic scoring model loaded successfully")
-        except FileNotFoundError:
-            raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+        print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
+        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        model.load_state_dict(s)
+        model.to(device)
+        model.eval()
         
-        # Load CLIP model
-        try:
-            clip_model, preprocess = clip.load("ViT-L/14", device=device)
-            print("CLIP model loaded successfully")
-        except Exception as e:
-            raise Exception(f"Error loading CLIP model: {e}")
+        model_time = time.time() - model_start
+        print(f"✅ Aesthetic scoring model loaded successfully ({model_time:.2f}s)")
         
-        models_loaded = True
-        models_loading = False
-        print("All models loaded successfully!")
-        return True
+    except FileNotFoundError:
+        print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+        raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    except Exception as e:
+        print(f"❌ ERROR loading aesthetic model: {e}")
+        raise Exception(f"Error loading aesthetic model: {e}")
+    
+    print()
+    
+    # Load CLIP model
+    print("🎨 Loading CLIP model...")
+    clip_start = time.time()
+    
+    try:
+        print("📥 Downloading/loading CLIP ViT-L/14 model...")
+        clip_model, preprocess = clip.load("ViT-L/14", device=device)
+        
+        clip_time = time.time() - clip_start
+        print(f"✅ CLIP model loaded successfully ({clip_time:.2f}s)")
         
     except Exception as e:
-        model_load_error = str(e)
-        models_loading = False
-        models_loaded = False
-        print(f"Failed to load models: {e}")
-        return False
-
-def ensure_models_loaded():
-    """Ensure models are loaded, load them if not"""
-    if not models_loaded and not models_loading:
-        return load_models()
-    return models_loaded
+        print(f"❌ ERROR loading CLIP model: {e}")
+        raise Exception(f"Error loading CLIP model: {e}")
+    
+    print()
+    
+    # Final summary
+    total_time = time.time() - start_time
+    print("=" * 60)
+    print("📊 MODEL LOADING SUMMARY")
+    print("=" * 60)
+    print(f"🧠 Aesthetic model load time: {model_time:.2f}s")
+    print(f"🎨 CLIP model load time: {clip_time:.2f}s")
+    print(f"⏱️  Total loading time: {total_time:.2f}s")
+    print(f"💾 Memory device: {device}")
+    print("✅ All models loaded and ready!")
+    print("=" * 60)
+    print()
+    
+    return True
 
 def predict_aesthetic_score(pil_image):
     """Predict aesthetic score for a PIL image"""
@@ -143,28 +167,9 @@ def predict_aesthetic_score(pil_image):
     except Exception as e:
         raise Exception(f"Error processing image: {str(e)}")
 
-# @app.route("/health", methods=["GET"])
-# def health_check():
-#     """Health check endpoint for Digital Ocean"""
-#     return jsonify({
-#         "status": "healthy",
-#         "models_loaded": models_loaded,
-#         "models_loading": models_loading,
-#         "model_load_error": model_load_error
-#     }), 200
-
 @app.route("/predict", methods=["POST"])
 def predict():
     """Predict aesthetic score from uploaded image or base64 data"""
-    # Ensure models are loaded
-    if not ensure_models_loaded():
-        if model_load_error:
-            return jsonify({"error": f"Models failed to load: {model_load_error}"}), 500
-        elif models_loading:
-            return jsonify({"error": "Models are still loading, please try again shortly"}), 503
-        else:
-            return jsonify({"error": "Models not loaded"}), 500
-    
     try:
         pil_image = None
         
@@ -200,16 +205,22 @@ def predict():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-def load_models_in_background():
-    """Load models in a background thread"""
-    load_models()
-
+    
 if __name__ == "__main__":
-    print("Starting Flask API server...")
-    print("Models will be loaded on first request or in background...")
-    
-    # Start model loading in background thread
-    threading.Thread(target=load_models_in_background, daemon=True).start()
-    
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    try:
+        # Load models first before starting the server
+        load_models()
+        
+        # Start the Flask server
+        print("🚀 Starting Flask API server...")
+        print(f"📡 Server will be available at: http://0.0.0.0:8080")
+        print(f"🔗 Health check endpoint: http://0.0.0.0:8080/health")
+        print(f"🎯 Prediction endpoint: http://0.0.0.0:8080/predict")
+        print("=" * 60)
+        
+        app.run(host='0.0.0.0', port=8080)
+        
+    except Exception as e:
+        print(f"❌ FATAL ERROR: Failed to initialize server: {e}")
+        print("🛑 Server startup aborted.")
+        exit(1)
