@@ -209,14 +209,14 @@ def predict():
 if __name__ == "__main__":
     try:
         # Load models first before starting the server
-        load_models()
+        # load_models()
         
-        # Start the Flask server
-        print("🚀 Starting Flask API server...")
-        print(f"📡 Server will be available at: http://0.0.0.0:8080")
-        print(f"🔗 Health check endpoint: http://0.0.0.0:8080/health")
-        print(f"🎯 Prediction endpoint: http://0.0.0.0:8080/predict")
-        print("=" * 60)
+        # # Start the Flask server
+        # print("🚀 Starting Flask API server...")
+        # print(f"📡 Server will be available at: http://0.0.0.0:8080")
+        # print(f"🔗 Health check endpoint: http://0.0.0.0:8080/health")
+        # print(f"🎯 Prediction endpoint: http://0.0.0.0:8080/predict")
+        # print("=" * 60)
         
         app.run(host='0.0.0.0', port=8080)
         
