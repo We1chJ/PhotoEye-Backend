@@ -67,51 +67,52 @@ def load_models():
     """Load and initialize the models"""
     global model, clip_model, preprocess, device
     
-    print("=" * 60)
-    print("INITIALIZING AESTHETIC SCORING API")
-    print("=" * 60)
+    # print("=" * 60)
+    # print("INITIALIZING AESTHETIC SCORING API")
+    # print("=" * 60)
 
-    # Initialize device
-    print("🔍 Detecting compute device...")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device == "cuda":
-        gpu_name = torch.cuda.get_device_name(0)
-        print(f"✅ GPU detected: {gpu_name}")
-        print(f"🔥 Using CUDA acceleration")
-    else:
-        print("⚠️  No GPU detected, using CPU")
-    print(f"📱 Device: {device}")
-    print()
+    # # Initialize device
+    # print("🔍 Detecting compute device...")
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
+    # if device == "cuda":
+    #     gpu_name = torch.cuda.get_device_name(0)
+    #     print(f"✅ GPU detected: {gpu_name}")
+    #     print(f"🔥 Using CUDA acceleration")
+    # else:
+    #     print("⚠️  No GPU detected, using CPU")
+    # print(f"📱 Device: {device}")
+    # print()
     
-    # Load aesthetic scoring model
-    print("🧠 Loading aesthetic scoring model...")
+    # # Load aesthetic scoring model
+    # print("🧠 Loading aesthetic scoring model...")
     
-    try:
-        model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
+    # try:
+    #     model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
         
-        print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
-        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-        model.load_state_dict(s)
-        model.to(device)
-        model.eval()
+    #     print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
+    #     s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+    #     model.load_state_dict(s)
+    #     model.to(device)
+    #     model.eval()
         
-        print(f"✅ Aesthetic scoring model loaded successfully")
+    #     print(f"✅ Aesthetic scoring model loaded successfully")
         
-    except FileNotFoundError:
-        print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-        raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    except Exception as e:
-        print(f"❌ ERROR loading aesthetic model: {e}")
-        raise Exception(f"Error loading aesthetic model: {e}")
+    # except FileNotFoundError:
+    #     print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    #     raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
+    # except Exception as e:
+    #     print(f"❌ ERROR loading aesthetic model: {e}")
+    #     raise Exception(f"Error loading aesthetic model: {e}")
     
-    print()
+    # print()
     
     # Load CLIP model
     print("🎨 Loading CLIP model...")
     
     try:
-        print("📥 Downloading/loading CLIP ViT-L/14 model...")
-        clip_model, preprocess = clip.load("ViT-L/14", device=device)
+        print("📥 Downloading/loading CLIP model...")
+        # clip_model, preprocess = clip.load("ViT-L/14", device=device)
+        clip_model, preprocess = clip.load("ViT-B/32", device=device)
                 
     except Exception as e:
         print(f"❌ ERROR loading CLIP model: {e}")
