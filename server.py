@@ -106,16 +106,16 @@ def load_models():
     
     print()
     
-    # # Load CLIP model
-    # print("🎨 Loading CLIP model...")
+    # Load CLIP model
+    print("🎨 Loading CLIP model...")
     
-    # try:
-    #     print("📥 Downloading/loading CLIP ViT-L/14 model...")
-    #     clip_model, preprocess = clip.load("ViT-L/14", device=device)
+    try:
+        print("📥 Downloading/loading CLIP ViT-L/14 model...")
+        clip_model, preprocess = clip.load("ViT-L/14", device=device)
                 
-    # except Exception as e:
-    #     print(f"❌ ERROR loading CLIP model: {e}")
-    #     raise Exception(f"Error loading CLIP model: {e}")
+    except Exception as e:
+        print(f"❌ ERROR loading CLIP model: {e}")
+        raise Exception(f"Error loading CLIP model: {e}")
         
     return True
 
