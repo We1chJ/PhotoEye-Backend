@@ -83,12 +83,12 @@ def load_models():
         
         # Load aesthetic scoring model (if you have it)
         # Commenting out since you don't have the model file
-        # print("🧠 Loading aesthetic scoring model...")
-        # model = MLP(768)
-        # s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-        # model.load_state_dict(s)
-        # model.to(device)
-        # model.eval()
+        print("🧠 Loading aesthetic scoring model...")
+        model = MLP(768)
+        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        model.load_state_dict(s)
+        model.to(device)
+        model.eval()
         
         models_loaded = True
         print("✅ Models loaded successfully!")
@@ -122,11 +122,11 @@ def predict_aesthetic_score(pil_image):
         return float(np.random.uniform(5.0, 9.0))  # Dummy score between 5-9
         
         # Uncomment when you have the model file:
-        # if device == "cuda":
-        #     prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
-        # else:
-        #     prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
-        # return float(prediction.cpu().detach().numpy()[0][0])
+        if device == "cuda":
+            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
+        else:
+            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
+        return float(prediction.cpu().detach().numpy()[0][0])
     
     except Exception as e:
         raise Exception(f"Error processing image: {str(e)}")
