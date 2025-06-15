@@ -83,12 +83,12 @@ def load_models():
         
         # Load aesthetic scoring model (if you have it)
         # Commenting out since you don't have the model file
-        print("🧠 Loading aesthetic scoring model...")
-        model = MLP(768)
-        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-        model.load_state_dict(s)
-        model.to(device)
-        model.eval()
+        # print("🧠 Loading aesthetic scoring model...")
+        # model = MLP(768)
+        # s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        # model.load_state_dict(s)
+        # model.to(device)
+        # model.eval()
         
         models_loaded = True
         print("✅ Models loaded successfully!")
