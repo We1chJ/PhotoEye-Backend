@@ -79,7 +79,7 @@ def load_models():
         # Load CLIP model
         print("🎨 Loading CLIP model...")
         print("📥 Downloading/loading CLIP model...")
-        clip_model, preprocess = clip.load("ViT-B/32", device=device)
+        clip_model, preprocess = clip.load("RN50", device=device)
         
         # Load aesthetic scoring model (if you have it)
         # Commenting out since you don't have the model file
