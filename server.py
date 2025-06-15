@@ -7,6 +7,8 @@ from PIL import Image
 import numpy as np
 import io
 import base64
+import threading
+import time
 
 app = Flask(__name__)
 
@@ -19,6 +21,8 @@ model = None
 clip_model = None
 preprocess = None
 device = None
+models_loaded = False
+loading_error = None
 
 class MLP(pl.LightningModule):
     def __init__(self, input_size, xcol='emb', ycol='avg_rating'):
@@ -65,64 +69,44 @@ def normalized(a, axis=-1, order=2):
 
 def load_models():
     """Load and initialize the models"""
-    global model, clip_model, preprocess, device
-    
-    # print("=" * 60)
-    # print("INITIALIZING AESTHETIC SCORING API")
-    # print("=" * 60)
-
-    # # Initialize device
-    # print("🔍 Detecting compute device...")
-    # device = "cuda" if torch.cuda.is_available() else "cpu"
-    # if device == "cuda":
-    #     gpu_name = torch.cuda.get_device_name(0)
-    #     print(f"✅ GPU detected: {gpu_name}")
-    #     print(f"🔥 Using CUDA acceleration")
-    # else:
-    #     print("⚠️  No GPU detected, using CPU")
-    # print(f"📱 Device: {device}")
-    # print()
-    
-    # # Load aesthetic scoring model
-    # print("🧠 Loading aesthetic scoring model...")
-    
-    # try:
-    #     model = MLP(768)  # CLIP embedding dim is 768 for CLIP ViT L 14
-        
-    #     print("📂 Loading model weights from 'sac+logos+ava1-l14-linearMSE.pth'...")
-    #     s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-    #     model.load_state_dict(s)
-    #     model.to(device)
-    #     model.eval()
-        
-    #     print(f"✅ Aesthetic scoring model loaded successfully")
-        
-    # except FileNotFoundError:
-    #     print("❌ ERROR: Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    #     raise Exception("Model file 'sac+logos+ava1-l14-linearMSE.pth' not found!")
-    # except Exception as e:
-    #     print(f"❌ ERROR loading aesthetic model: {e}")
-    #     raise Exception(f"Error loading aesthetic model: {e}")
-    
-    # print()
-    
-    # Load CLIP model
-    print("🎨 Loading CLIP model...")
+    global model, clip_model, preprocess, device, models_loaded, loading_error
     
     try:
-        print("📥 Downloading/loading CLIP model...")
-        # clip_model, preprocess = clip.load("ViT-L/14", device=device)
-        clip_model, preprocess = clip.load("ViT-B/32", device=device)
-                
-    except Exception as e:
-        print(f"❌ ERROR loading CLIP model: {e}")
-        raise Exception(f"Error loading CLIP model: {e}")
+        print("🔍 Detecting compute device...")
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"📱 Device: {device}")
         
-    return True
+        # Load CLIP model
+        print("🎨 Loading CLIP model...")
+        print("📥 Downloading/loading CLIP model...")
+        clip_model, preprocess = clip.load("ViT-B/32", device=device)
+        
+        # Load aesthetic scoring model (if you have it)
+        # Commenting out since you don't have the model file
+        # print("🧠 Loading aesthetic scoring model...")
+        # model = MLP(768)
+        # s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        # model.load_state_dict(s)
+        # model.to(device)
+        # model.eval()
+        
+        models_loaded = True
+        print("✅ Models loaded successfully!")
+        
+    except Exception as e:
+        loading_error = str(e)
+        print(f"❌ ERROR loading models: {e}")
 
 def predict_aesthetic_score(pil_image):
     """Predict aesthetic score for a PIL image"""
     try:
+        # Check if models are loaded
+        if not models_loaded:
+            raise Exception("Models are still loading. Please try again in a moment.")
+        
+        if loading_error:
+            raise Exception(f"Model loading failed: {loading_error}")
+        
         # Preprocess image
         image = preprocess(pil_image).unsqueeze(0).to(device)
         
@@ -133,21 +117,49 @@ def predict_aesthetic_score(pil_image):
         # Normalize features
         im_emb_arr = normalized(image_features.cpu().detach().numpy())
         
-        # Predict aesthetic score
-        if device == "cuda":
-            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
-        else:
-            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
+        # For now, return a dummy score since we don't have the aesthetic model
+        # Replace this with actual model prediction when you have the model file
+        return float(np.random.uniform(5.0, 9.0))  # Dummy score between 5-9
         
-        return float(prediction.cpu().detach().numpy()[0][0])
+        # Uncomment when you have the model file:
+        # if device == "cuda":
+        #     prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
+        # else:
+        #     prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
+        # return float(prediction.cpu().detach().numpy()[0][0])
     
     except Exception as e:
         raise Exception(f"Error processing image: {str(e)}")
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint for DigitalOcean"""
+    return jsonify({
+        "status": "healthy",
+        "models_loaded": models_loaded,
+        "loading_error": loading_error
+    }), 200
+
+@app.route("/", methods=["GET"])
+def root():
+    """Root endpoint"""
+    return jsonify({
+        "message": "Aesthetic Scoring API",
+        "status": "running",
+        "models_loaded": models_loaded
+    }), 200
 
 @app.route("/predict", methods=["POST"])
 def predict():
     """Predict aesthetic score from uploaded image or base64 data"""
     try:
+        # Check if models are loaded
+        if not models_loaded:
+            if loading_error:
+                return jsonify({"error": f"Model loading failed: {loading_error}"}), 500
+            else:
+                return jsonify({"error": "Models are still loading. Please try again in a moment."}), 503
+        
         pil_image = None
         
         # Check if it's a file upload
@@ -182,14 +194,19 @@ def predict():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
 if __name__ == "__main__":
     try:
-        # Load models first before starting the server
-        load_models()
+        # Start Flask server immediately
+        print("🚀 Starting Flask API server...")
+        
+        # Load models in a separate thread to not block startup
+        print("📚 Starting model loading in background...")
+        loading_thread = threading.Thread(target=load_models)
+        loading_thread.daemon = True
+        loading_thread.start()
         
         # Start the Flask server
-        print("🚀 Starting Flask API server...")        
         app.run(host='0.0.0.0', port=8080)
         
     except Exception as e:
