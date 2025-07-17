@@ -8,7 +8,6 @@ import numpy as np
 import io
 import base64
 import threading
-import time
 
 app = Flask(__name__)
 
@@ -79,16 +78,14 @@ def load_models():
         # Load CLIP model
         print("🎨 Loading CLIP model...")
         print("📥 Downloading/loading CLIP model...")
-        # clip_model, preprocess = clip.load("RN50", device=device)
+        clip_model, preprocess = clip.load("ViT-L/14", device=device)
         
-        # Load aesthetic scoring model (if you have it)
-        # Commenting out since you don't have the model file
-        # print("🧠 Loading aesthetic scoring model...")
-        # model = MLP(768)
-        # s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
-        # model.load_state_dict(s)
-        # model.to(device)
-        # model.eval()
+        print("🧠 Loading aesthetic scoring model...")
+        model = MLP(768)
+        s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
+        model.load_state_dict(s)
+        model.to(device)
+        model.eval()
         
         models_loaded = True
         print("✅ Models loaded successfully!")
@@ -117,10 +114,6 @@ def predict_aesthetic_score(pil_image):
         # Normalize features
         im_emb_arr = normalized(image_features.cpu().detach().numpy())
         
-        # For now, return a dummy score since we don't have the aesthetic model
-        # Replace this with actual model prediction when you have the model file
-        return float(np.random.uniform(5.0, 9.0))  # Dummy score between 5-9
-        
         # Uncomment when you have the model file:
         if device == "cuda":
             prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
@@ -130,15 +123,6 @@ def predict_aesthetic_score(pil_image):
     
     except Exception as e:
         raise Exception(f"Error processing image: {str(e)}")
-
-@app.route("/health", methods=["GET"])
-def health_check():
-    """Health check endpoint for DigitalOcean"""
-    return jsonify({
-        "status": "healthy",
-        "models_loaded": models_loaded,
-        "loading_error": loading_error
-    }), 200
 
 @app.route("/", methods=["GET"])
 def root():
