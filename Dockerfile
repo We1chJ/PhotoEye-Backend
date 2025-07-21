@@ -17,7 +17,7 @@ COPY . .
 EXPOSE 8080
 
 # Use gunicorn for production instead of Flask development server
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "server:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "30", "server:app"]
 
 # CMD ["sh"]
 
