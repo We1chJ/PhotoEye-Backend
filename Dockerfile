@@ -13,8 +13,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the code
 COPY . .
 
-# Expose the port your app runs on (change if needed)
+# Expose the port your app runs on
 EXPOSE 8080
 
-# Run the server
-CMD ["python", "server.py"]
+# Use gunicorn for production instead of Flask development server
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "server:app"]
+
+# CMD ["sh"]
+
+# Alternative if you want to stick with Python directly:
+# CMD ["python", "server.py"]

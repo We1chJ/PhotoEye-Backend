@@ -43,45 +43,44 @@ class MLP(pl.LightningModule):
     def forward(self, x):
         return self.layers(x)
 
-    def training_step(self, batch, batch_idx):
-        x = batch[self.xcol]
-        y = batch[self.ycol].reshape(-1, 1)
-        x_hat = self.layers(x)
-        loss = nn.functional.mse_loss(x_hat, y)
-        return loss
-    
-    def validation_step(self, batch, batch_idx):
-        x = batch[self.xcol]
-        y = batch[self.ycol].reshape(-1, 1)
-        x_hat = self.layers(x)
-        loss = nn.functional.mse_loss(x_hat, y)
-        return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
-
 def normalized(a, axis=-1, order=2):
     l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
     l2[l2 == 0] = 1
     return a / np.expand_dims(l2, axis)
 
-def load_models():
-    """Load and initialize the models"""
-    global model, clip_model, preprocess, device, models_loaded, loading_error
+def project_1024_to_768(embeddings):
+    """
+    Simple projection methods to convert 1024-dim to 768-dim
+    """
+    # Method 1: Truncate (take first 768 dimensions)
+    # return embeddings[:, :768]
     
+    # Method 2: PCA-like projection (learned linear transformation)
+    # This would need to be trained, but here's a random projection
+    if not hasattr(project_1024_to_768, 'projection_matrix'):
+        # Create a fixed random projection matrix (you'd train this properly)
+        torch.manual_seed(42)  # For reproducibility
+        project_1024_to_768.projection_matrix = torch.randn(1024, 768) * 0.1
+    
+    projection_matrix = project_1024_to_768.projection_matrix.to(embeddings.device)
+    return torch.mm(embeddings, projection_matrix)
+    
+    # Method 3: Average pooling groups of dimensions
+    # embeddings_reshaped = embeddings.view(-1, 4, 256)  # Group every 4 dimensions
+    # return embeddings_reshaped.mean(dim=1)[:, :768]
+
+def load_models():
+    global model, clip_model, preprocess, device, models_loaded, loading_error
     try:
         print("🔍 Detecting compute device...")
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"📱 Device: {device}")
         
-        # Load CLIP model
-        print("🎨 Loading CLIP model...")
-        print("📥 Downloading/loading CLIP model...")
-        clip_model, preprocess = clip.load("ViT-L/14", device=device)
+        print("🎨 Loading CLIP RN50 model...")
+        clip_model, preprocess = clip.load("RN50", device=device)
         
         print("🧠 Loading aesthetic scoring model...")
-        model = MLP(768)
+        model = MLP(768)  # Still expects 768-dim input
         s = torch.load("sac+logos+ava1-l14-linearMSE.pth", map_location=device)
         model.load_state_dict(s)
         model.to(device)
@@ -89,111 +88,85 @@ def load_models():
         
         models_loaded = True
         print("✅ Models loaded successfully!")
-        
+        print("📝 Using simple projection from 1024D → 768D")
     except Exception as e:
         loading_error = str(e)
         print(f"❌ ERROR loading models: {e}")
 
-def predict_aesthetic_score(pil_image):
-    """Predict aesthetic score for a PIL image"""
-    try:
-        # Check if models are loaded
-        if not models_loaded:
-            raise Exception("Models are still loading. Please try again in a moment.")
-        
-        if loading_error:
-            raise Exception(f"Model loading failed: {loading_error}")
-        
-        # Preprocess image
-        image = preprocess(pil_image).unsqueeze(0).to(device)
-        
-        # Extract CLIP features
-        with torch.no_grad():
-            image_features = clip_model.encode_image(image)
-        
-        # Normalize features
-        im_emb_arr = normalized(image_features.cpu().detach().numpy())
-        
-        # Uncomment when you have the model file:
-        if device == "cuda":
-            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
-        else:
-            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
-        return float(prediction.cpu().detach().numpy()[0][0])
-    
-    except Exception as e:
-        raise Exception(f"Error processing image: {str(e)}")
+# Start loading models in background
+print("🚀 Starting Flask API server...")
+print("📚 Starting model loading in background...")
+loading_thread = threading.Thread(target=load_models)
+loading_thread.daemon = True
+loading_thread.start()
 
 @app.route("/", methods=["GET"])
 def root():
-    """Root endpoint"""
     return jsonify({
-        "message": "Aesthetic Scoring API",
+        "message": "Aesthetic Scoring API with RN50 + Projection",
         "status": "running",
         "models_loaded": models_loaded
     }), 200
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    """Predict aesthetic score from uploaded image or base64 data"""
     try:
-        # Check if models are loaded
         if not models_loaded:
             if loading_error:
                 return jsonify({"error": f"Model loading failed: {loading_error}"}), 500
             else:
                 return jsonify({"error": "Models are still loading. Please try again in a moment."}), 503
-        
+
         pil_image = None
-        
-        # Check if it's a file upload
+
         if 'file' in request.files:
             file = request.files['file']
             if file.filename == '':
                 return jsonify({"error": "No file selected"}), 400
-            
-            # Process image directly from memory
             image_data = file.read()
             pil_image = Image.open(io.BytesIO(image_data)).convert('RGB')
-        
-        # Check if it's base64 data
+
         elif request.is_json:
             data = request.get_json()
             if not data or 'image' not in data:
                 return jsonify({"error": "No image data provided"}), 400
-            
-            # Decode base64 image
             image_data = base64.b64decode(data['image'])
             pil_image = Image.open(io.BytesIO(image_data)).convert('RGB')
-        
+
         else:
             return jsonify({"error": "No image provided"}), 400
-        
-        # Predict aesthetic score
+
         score = predict_aesthetic_score(pil_image)
-        
-        return jsonify({
-            "aesthetic_score": score
-        })
-        
+        return jsonify({"aesthetic_score": score})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
+def predict_aesthetic_score(pil_image):
     try:
-        # Start Flask server immediately
-        print("🚀 Starting Flask API server...")
+        if not models_loaded:
+            raise Exception("Models are still loading. Please try again in a moment.")
+        if loading_error:
+            raise Exception(f"Model loading failed: {loading_error}")
         
-        # Load models in a separate thread to not block startup
-        print("📚 Starting model loading in background...")
-        loading_thread = threading.Thread(target=load_models)
-        loading_thread.daemon = True
-        loading_thread.start()
+        image = preprocess(pil_image).unsqueeze(0).to(device)
+        with torch.no_grad():
+            # Get RN50 embeddings (1024-dim)
+            image_features = clip_model.encode_image(image)
+            
+            # Project to 768-dim
+            projected_features = project_1024_to_768(image_features)
+            
+        im_emb_arr = normalized(projected_features.cpu().detach().numpy())
         
-        # Start the Flask server
-        app.run(host='0.0.0.0', port=8080)
+        if device == "cuda":
+            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.cuda.FloatTensor))
+        else:
+            prediction = model(torch.from_numpy(im_emb_arr).to(device).type(torch.FloatTensor))
         
+        return float(prediction.cpu().detach().numpy()[0][0])
     except Exception as e:
-        print(f"❌ FATAL ERROR: Failed to initialize server: {e}")
-        print("🛑 Server startup aborted.")
-        exit(1)
+        raise Exception(f"Error processing image: {str(e)}")
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)

@@ -13,3 +13,4 @@ torchvision==0.15.1
 tqdm==4.65.0
 webdataset==0.2.48
 flask
+gunicorn==20.1.0
